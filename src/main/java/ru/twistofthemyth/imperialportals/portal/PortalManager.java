@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface PortalManager {
 
-    void create(@NotNull Portal location);
+    boolean create(@NotNull Portal location);
 
     void destroy(@NotNull UUID portalId);
 

@@ -25,7 +25,7 @@ public class PortalManagerImpl implements PortalManager {
     private final DataManager dataManager = new JsonDataManager();
 
     @Override
-    public void create(@NotNull Portal portal) {
+    public boolean create(@NotNull Portal portal) {
         logger.log("[XZ PM] Creating portal\n" + portal);
         Map<UUID, Portal> unlinkedPortals = dataManager.getUnlinkedData();
         Map<UUID, Portal> linkedPortals = dataManager.getLinkedData();
@@ -44,13 +44,15 @@ public class PortalManagerImpl implements PortalManager {
 
             setPortalBlocks(portal);
             setPortalBlocks(unlinkedPortal);
+            dataManager.setUnlinkedData(unlinkedPortals);
+            dataManager.setLinkedData(linkedPortals);
+            return true;
         } else {
             logger.log("[XZ PM] Set portal " + portal.getId() + " as unlinked");
             unlinkedPortals.put(creatorId, portal);
+            dataManager.setUnlinkedData(unlinkedPortals);
+            return false;
         }
-
-        dataManager.setUnlinkedData(unlinkedPortals);
-        dataManager.setLinkedData(linkedPortals);
     }
 
     @Override

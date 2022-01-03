@@ -9,7 +9,8 @@ public class Constants {
 
     public static final Material RAW_PORTAL_FRAME = Material.GOLD_BLOCK;
     public static final Material PORTAL_BLOCK = Material.NETHER_PORTAL;
-    public static final Material ACTIVATE_ITEM = Material.DIAMOND;
+    public static final Material ACTIVATE_ITEM = Material.BLAZE_ROD;
+    public static final int ACTIVATE_ITEM_AMOUNT = 4;
     public static final int MAX_FRAME_WIDTH = 20;
     public static final int MIN_FRAME_WIDTH = 4;
     public static final int MAX_FRAME_HEIGHT = 20;

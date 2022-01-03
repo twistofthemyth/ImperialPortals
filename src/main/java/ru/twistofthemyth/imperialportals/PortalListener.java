@@ -1,14 +1,18 @@
 package ru.twistofthemyth.imperialportals;
 
+import org.bukkit.Axis;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.Orientable;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Fox;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.entity.EntityPortalEnterEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
@@ -73,25 +77,7 @@ public class PortalListener implements Listener {
     @EventHandler
     public void onTeleport(PlayerTeleportEvent event) {
         if (NETHER_PORTAL.equals(event.getCause())) {
-            Block coreBlock = event.getFrom().getBlock();
-            Block minusXBlock = addLocation(event.getFrom(), -1, 0, 0).getBlock();
-            Block plusXBlock = addLocation(event.getFrom(), 1, 0, 0).getBlock();
-            Block minusZBlock = addLocation(event.getFrom(), 0, 0, -1).getBlock();
-            Block plusZBlock = addLocation(event.getFrom(), 0, 0, 1).getBlock();
-
-            Block teleportBlock = null;
-            if (coreBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = coreBlock;
-            } else if (minusXBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = minusXBlock;
-            } else if (plusXBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = plusXBlock;
-            } else if (minusZBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = minusZBlock;
-            } else if (plusZBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = plusZBlock;
-            }
-
+            Block teleportBlock = defineTeleportBlock(event.getFrom());
             if (teleportBlock != null) {
                 Location to = portalManager.teleport(UUID.fromString(teleportBlock.getMetadata(PortalMeta.KEY).get(0).asString()));
                 if (to != null) {
@@ -105,32 +91,22 @@ public class PortalListener implements Listener {
     }
 
     @EventHandler
-    public void onEntityTeleport(EntityPortalEnterEvent event) {
+    public void onEntityTeleport(EntityPortalEvent event) {
         if (!EntityType.PLAYER.equals(event.getEntity().getType())) {
-            Block coreBlock = event.getLocation().getBlock();
-            Block minusXBlock = addLocation(event.getLocation(), -1, 0, 0).getBlock();
-            Block plusXBlock = addLocation(event.getLocation(), 1, 0, 0).getBlock();
-            Block minusZBlock = addLocation(event.getLocation(), 0, 0, -1).getBlock();
-            Block plusZBlock = addLocation(event.getLocation(), 0, 0, 1).getBlock();
-
-            Block teleportBlock = null;
-            if (coreBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = coreBlock;
-            } else if (minusXBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = minusXBlock;
-            } else if (plusXBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = plusXBlock;
-            } else if (minusZBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = minusZBlock;
-            } else if (plusZBlock.getState().hasMetadata(PortalMeta.KEY)) {
-                teleportBlock = plusZBlock;
-            }
-
+            Block teleportBlock = defineTeleportBlock(event.getFrom());
             if (teleportBlock != null) {
                 Location to = portalManager.teleport(UUID.fromString(teleportBlock.getMetadata(PortalMeta.KEY).get(0).asString()));
+                Axis axis = ((Orientable) teleportBlock.getBlockData()).getAxis();
                 if (to != null) {
-                    event.getEntity().teleportAsync(addLocation(to, 2, 0, 0));
-                    Effects.playTeleportEffect(to, event.getLocation());
+                    to = addLocation(to, Axis.X.equals(axis) ? 2 : 0, 0, Axis.Z.equals(axis) ? 2 : 0);
+                    if (to.getWorld().equals(event.getFrom().getWorld())) {
+                        event.getEntity().teleportAsync(to);
+                        event.setCancelled(true);
+                    } else {
+                        event.setTo(to);
+                    }
+
+                    Effects.playTeleportEffect(to, event.getFrom());
                 }
             }
         }
@@ -143,6 +119,17 @@ public class PortalListener implements Listener {
                     event.getBlock().getState().getMetadata(PortalMeta.KEY).get(0).asString()));
             Effects.playDestroyEffect(event.getPlayer().getLocation());
             Messages.destroyPortal(event.getPlayer());
+        }
+    }
+
+    @EventHandler
+    private void onPortalSpawnEvent(CreatureSpawnEvent event) {
+        if (CreatureSpawnEvent.SpawnReason.NETHER_PORTAL.equals(event.getSpawnReason())) {
+            Block teleportBlock = defineTeleportBlock(event.getLocation());
+            if(teleportBlock != null){
+                event.getLocation().getWorld().spawn(event.getLocation(), Fox.class);
+                event.getEntity().remove();
+            }
         }
     }
 
@@ -159,5 +146,28 @@ public class PortalListener implements Listener {
             return null;
         }
         return portalFrame.build(location, player);
+    }
+
+    @Nullable
+    private Block defineTeleportBlock(@NotNull Location location) {
+        Block coreBlock = location.getBlock();
+        Block minusXBlock = addLocation(location, -1, 0, 0).getBlock();
+        Block plusXBlock = addLocation(location, 1, 0, 0).getBlock();
+        Block minusZBlock = addLocation(location, 0, 0, -1).getBlock();
+        Block plusZBlock = addLocation(location, 0, 0, 1).getBlock();
+
+        Block teleportBlock = null;
+        if (coreBlock.getState().hasMetadata(PortalMeta.KEY)) {
+            teleportBlock = coreBlock;
+        } else if (minusXBlock.getState().hasMetadata(PortalMeta.KEY)) {
+            teleportBlock = minusXBlock;
+        } else if (plusXBlock.getState().hasMetadata(PortalMeta.KEY)) {
+            teleportBlock = plusXBlock;
+        } else if (minusZBlock.getState().hasMetadata(PortalMeta.KEY)) {
+            teleportBlock = minusZBlock;
+        } else if (plusZBlock.getState().hasMetadata(PortalMeta.KEY)) {
+            teleportBlock = plusZBlock;
+        }
+        return teleportBlock;
     }
 }

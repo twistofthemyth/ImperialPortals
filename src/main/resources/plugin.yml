@@ -1,0 +1,5 @@
+name: ImperialPortals
+version: '${project.version}'
+main: ru.twistofthemyth.imperialportals.ImperialPortals
+api-version: 1.18
+authors: [ ha0s ]
